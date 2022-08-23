@@ -47,12 +47,23 @@ class Argument(ArgumentParser):
     def boolean(self, value: bool):
         ...
 
+    @property
+    @argument
+    def optional(self, value: int = 3) -> int:
+        if not self.baz:
+            return -1
+        return value
+
+
+class AdditionalArgument(Argument):
+    ...
+
 
 class TestArgparser(unittest.TestCase):
     """Testcase for argparser"""
 
     def setUp(self) -> None:
-        self.args = Argument(lazy_parsing=True)
+        self.args = AdditionalArgument(lazy_parsing=True)
 
     def __foo(self, s: str = ""):
         return "--foo foo --nargs 1 2 3 " + s
@@ -91,3 +102,13 @@ class TestArgparser(unittest.TestCase):
     def test_exception(self):
         with self.assertRaises(SystemExit):
             self.args.parse_args("")
+
+    def test_additional_args(self):
+        self.args.parse_args(self.__foo())
+        self.assertEqual(self.args.bar, 1)
+        self.assertEqual(self.args.baz, [])
+        self.assertEqual(self.args.optional, -1)
+
+        self.args.parse_args(self.__foo("--baz foo/bar"))
+        self.assertEqual(self.args.baz, ["foo", "bar"])
+        self.assertEqual(self.args.optional, 3)

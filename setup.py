@@ -24,7 +24,6 @@ if __name__ == "__main__":
             packages=setuptools.find_packages(
                 exclude=("test", "build", "dist", "scripts")
             ),
-            package_dir={"": "./argparser"},
             python_requires=">=3.8",
             install_requires=[
                 pkgs.strip()

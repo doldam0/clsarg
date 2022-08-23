@@ -1,0 +1,32 @@
+import setuptools
+
+
+if __name__ == "__main__":
+    with open("README.md", "r", encoding="utf-8") as f:
+        long_description = f.read()
+
+    with open("requirements.txt", "r") as f:
+        setuptools.setup(
+            name="argparser",
+            version="0.0.1",
+            author="doldam0",
+            author_email="jinustar@g.skku.edu",
+            description="The class-based argument parser",
+            long_description=long_description,
+            long_description_content_type="text/markdown",
+            url="https://github.com/doldam0/argparser",
+            classifiers=[
+                "Programming Language :: Python :: 3",
+                "Operating System :: OS Independent",
+            ],
+            packages=setuptools.find_packages(
+                exclude=("test", "build", "dist", "scripts")
+            ),
+            package_dir={'': './argparser'},
+            python_requires=">=3.8",
+            install_requires=[
+                pkgs.strip()
+                for pkgs in f.readlines()
+                if not pkgs.startswith("--")
+            ],
+        )

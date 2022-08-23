@@ -380,7 +380,6 @@ class _GenerateArgumentGetter:
             __kwds["nargs"] = __kwds.get("nargs", "*")
             argument_type = type_args[0]
         elif origin_type == Union:
-            print(type_args)
             if len(type_args) != 2 or not isinstance(None, type_args[1]):
                 raise TypeError("Union type is not allowed.")
             __kwds["required"] = False

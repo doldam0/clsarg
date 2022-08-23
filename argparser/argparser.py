@@ -37,8 +37,8 @@ class ArgumentParser:
 
             class MainArgument(ArgumentParser):
                 @argument
-                def num_class(self, value: int):
-                    return value
+                def num_class(self, value: int) -> int:
+                    ...
 
         then the argument `num_class` will be defined. That’s it!
 
@@ -51,8 +51,8 @@ class ArgumentParser:
                     default=1,
                     required=True
                 )
-                def num_class(self, value: int):
-                    return value
+                def num_class(self, value: int) -> int:
+                    ...
 
         You can check all options at the description of `@argument` decorator.
 
@@ -64,9 +64,9 @@ class ArgumentParser:
                     default=1,
                     required=True
                 )
-                def num_class(self, value: int):
-                    '''The number of the clareturn values.'''
-                    return value
+                def num_class(self, value: int) -> int:
+                    '''The number of the classes.'''
+                    ...
 
         And if you want to set this argument as parameter, just add `@property`
         decorator::
@@ -78,11 +78,53 @@ class ArgumentParser:
                     default=1,
                     required=True
                 )
-                def num_class(self, value: int):
-                    '''The number of the clareturn values.'''
-                    return value
+                def num_class(self, value: int) -> int:
+                    '''The number of the classes.'''
+                    ...
 
         **NOTE**: You should assign `property` before `argument`.
+
+        You can leave the body of the function with ellipsis(...) if you don't
+        want to handle the argument `value`. So, those are same codes::
+
+            class MainArgument(ArgumentParser):
+                @property
+                @argument(
+                    aliases='n',
+                    default=1,
+                    required=True
+                )
+                def num_class(self, value: int) -> int:
+                    '''The number of the classes.'''
+                    ...
+
+
+            class MainArgument(ArgumentParser):
+                @property
+                @argument(
+                    aliases='n',
+                    default=1,
+                    required=True
+                )
+                def num_class(self, value: int) -> int:
+                    '''The number of the classes.'''
+                    return value
+
+        If you handle the argument `value`, just write the function body and
+        return the handled value::
+
+            class MainArgument(ArgumentParser):
+                @property
+                @argument(
+                    aliases='n',
+                    default=1,
+                    required=True
+                )
+                def num_class(self, value: int) -> list[int]:
+                    '''The number of the classes.'''
+                    if value <= 0:
+                        raise ValueError("The value must be positive integer")
+                    return value + 1
 
         If you done writing down the argument class, just make an object of
         parser. Then parsing will be done::
@@ -127,8 +169,8 @@ class ArgumentParser:
 
                 class MainArgument(ArgumentParser):
                     @argument
-                    def num_class(self, value: int):
-                        return value
+                    def num_class(self, value: int) -> int:
+                        ...
 
             then the argument `num_class` will be defined. That’s it!
 
@@ -140,8 +182,8 @@ class ArgumentParser:
                         aliases='n',
                         required=True
                     )
-                    def num_class(self, value: int = 1):
-                        return value
+                    def num_class(self, value: int = 1) -> int:
+                        ...
 
             You can check all options at the description of `@argument`
             decorator.
@@ -153,9 +195,9 @@ class ArgumentParser:
                         aliases='n',
                         required=True
                     )
-                    def num_class(self, value: int = 1):
-                        '''The number of the clareturn values.'''
-                        return value
+                    def num_class(self, value: int = 1) -> int:
+                        '''The number of the classes.'''
+                        ...
 
             And if you want to set this argument as read-only, just add
             `@property` decorator::
@@ -166,11 +208,55 @@ class ArgumentParser:
                         aliases='n',
                         required=True
                     )
-                    def num_class(self, value: int = 1):
+                    def num_class(self, value: int = 1) -> int:
+                        '''The number of the classes.'''
+                        ...
+
+            **NOTE**: You should assign `property` before `argument`.
+
+            You can leave the body of the function with ellipsis(...) if you
+            don't want to handle the argument `value`. So, those are same
+            codes::
+
+                class MainArgument(ArgumentParser):
+                    @property
+                    @argument(
+                        aliases='n',
+                        default=1,
+                        required=True
+                    )
+                    def num_class(self, value: int) -> int:
+                        '''The number of the classes.'''
+                        ...
+
+
+                class MainArgument(ArgumentParser):
+                    @property
+                    @argument(
+                        aliases='n',
+                        default=1,
+                        required=True
+                    )
+                    def num_class(self, value: int) -> int:
                         '''The number of the classes.'''
                         return value
 
-            **NOTE**: You should assign `property` before `argument`.
+            If you handle the argument `value`, just write the function body and
+            return the handled value::
+
+                class MainArgument(ArgumentParser):
+                    @property
+                    @argument(
+                        aliases='n',
+                        default=1,
+                        required=True
+                    )
+                    def num_class(self, value: int) -> list[int]:
+                        '''The number of the classes.'''
+                        if value <= 0:
+                            raise ValueError("The value must be positive"
+                                             "integer")
+                        return list(range(value))
 
             If you done writing down the argument class, just make an object of
             parser. Then parsing will be done::
@@ -391,6 +477,18 @@ def argument(
     ...
 
 
+@overload
+def argument(
+    getter: Union[
+        Callable[[Any, P], None],
+        Callable[[Any, Optional[P]], None],
+        Callable[[Any, List[P]], None],
+    ],
+    /,
+) -> Callable[[Any], P]:
+    ...
+
+
 def argument(
     name: Optional[
         Union[
@@ -399,6 +497,9 @@ def argument(
                 Callable[[Any, P], R],
                 Callable[[Any, Optional[P]], R],
                 Callable[[Any, List[P]], R],
+                Callable[[Any, P], None],
+                Callable[[Any, Optional[P]], None],
+                Callable[[Any, List[P]], None],
             ],
         ]
     ] = None,
@@ -408,6 +509,7 @@ def argument(
     const: bool = False,
     nargs: Optional[Union[int, Literal["*"], Literal["+"]]] = None,
 ) -> Union[
+    Callable[[Any], P],
     Callable[[Any], R],
     Callable[[Callable[[Any], R]], Callable[[Any], Optional[R]]],
     Callable[[Callable[[Any, P], R]], Callable[[Any], R]],

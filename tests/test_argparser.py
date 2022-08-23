@@ -12,12 +12,12 @@ class Argument(ArgumentParser):
 
     @property
     @argument
-    def foo(self, value: str):
+    def foo(self, value: str) -> str:
         ...
 
     @property
     @argument(name="name")
-    def property_name(self, value: str = ""):
+    def property_name(self, value: str = "") -> str:
         ...
 
     @property

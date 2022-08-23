@@ -9,14 +9,14 @@ if __name__ == "__main__":
 
     with open("requirements.txt", "r") as f:
         setuptools.setup(
-            name="argparser",
+            name="clsarg",
             version="0.0.1",
             author="doldam0",
             author_email="jinustar@g.skku.edu",
             description="The class-based argument parser",
             long_description=long_description,
             long_description_content_type="text/markdown",
-            url="https://github.com/doldam0/argparser",
+            url="https://github.com/doldam0/clsarg",
             classifiers=[
                 "Programming Language :: Python :: 3",
                 "Operating System :: OS Independent",

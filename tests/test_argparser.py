@@ -4,7 +4,7 @@ import unittest
 
 from typing import List, Optional
 
-from argparser import ArgumentParser, argument
+from clsarg import ArgumentParser, argument
 
 
 class Argument(ArgumentParser):

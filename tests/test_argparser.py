@@ -13,12 +13,12 @@ class Argument(ArgumentParser):
     @property
     @argument
     def foo(self, value: str) -> str:
-        ...
+        return value
 
     @property
     @argument(name="name")
     def property_name(self, value: str = "") -> str:
-        ...
+        return value
 
     @property
     @argument(aliases="b")
@@ -40,12 +40,12 @@ class Argument(ArgumentParser):
     @property
     @argument(nargs=3, metavar="N")
     def nargs(self, value: List[int]):
-        ...
+        return value
 
     @property
     @argument
     def boolean(self, value: bool):
-        ...
+        return value
 
     @property
     @argument

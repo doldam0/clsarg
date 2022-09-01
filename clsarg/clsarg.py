@@ -21,6 +21,7 @@ from typing import (
     get_type_hints,
     overload,
 )
+from typing_extensions import TypeGuard
 
 
 class ArgumentParser:
@@ -268,6 +269,46 @@ class ArgumentParser:
 
 P = TypeVar("P", int, float, str, bool)
 R = TypeVar("R")
+T_co = TypeVar("T_co", bound=ArgumentParser, covariant=True)
+
+
+def has_one_argument(
+    target: Union[
+        Callable[[T_co, P], R],
+        Callable[[T_co, Optional[P]], R],
+        Callable[[T_co, List[P]], R],
+        Callable[[T_co, P], None],
+        Callable[[T_co, Optional[P]], None],
+        Callable[[T_co, List[P]], None],
+        Callable[[T_co], R],
+    ]
+) -> TypeGuard[Callable[[T_co], R]]:
+    """Check whether the number of the target function's parameters is one."""
+    return len(signature(target).parameters) == 1
+
+
+def has_two_argument(
+    target: Union[
+        Callable[[T_co, P], R],
+        Callable[[T_co, Optional[P]], R],
+        Callable[[T_co, List[P]], R],
+        Callable[[T_co, P], None],
+        Callable[[T_co, Optional[P]], None],
+        Callable[[T_co, List[P]], None],
+        Callable[[T_co], R],
+    ]
+) -> TypeGuard[
+    Union[
+        Callable[[T_co, P], R],
+        Callable[[T_co, Optional[P]], R],
+        Callable[[T_co, List[P]], R],
+        Callable[[T_co, P], None],
+        Callable[[T_co, Optional[P]], None],
+        Callable[[T_co, List[P]], None],
+    ]
+]:
+    """Check whether the number of the target function's parameters is two."""
+    return len(signature(target).parameters) == 2
 
 
 class _GenerateArgumentGetter:
@@ -276,14 +317,45 @@ class _GenerateArgumentGetter:
     def __init__(self):
         self.__num_arguments = 0
 
+    @overload
     def __call__(
         self,
-        getter: Callable,
+        getter: Callable[[T_co], R],
         /,
         *__args: str,
         name: Optional[str] = None,
         **__kwds: Any,
-    ) -> Callable:
+    ) -> Callable[[T_co], Optional[R]]:
+        ...
+
+    @overload
+    def __call__(
+        self,
+        getter: Union[
+            Callable[[T_co, P], R],
+            Callable[[T_co, Optional[P]], R],
+            Callable[[T_co, List[P]], R],
+        ],
+        /,
+        *__args: str,
+        name: Optional[str] = None,
+        **__kwds: Any,
+    ) -> Callable[[T_co], R]:
+        ...
+
+    def __call__(
+        self,
+        getter: Union[
+            Callable[[T_co, P], R],
+            Callable[[T_co, Optional[P]], R],
+            Callable[[T_co, List[P]], R],
+            Callable[[T_co], R],
+        ],
+        /,
+        *__args: str,
+        name: Optional[str] = None,
+        **__kwds: Any,
+    ) -> Union[Callable[[T_co], R], Callable[[T_co], Optional[R]],]:
         argument_name = getter.__name__
 
         __kwds["required"] = True
@@ -296,11 +368,19 @@ class _GenerateArgumentGetter:
 
         if __kwds.get("const", False):
 
-            def const_wrapper(self: ArgumentParser):
+            def const_wrapper(self):
                 value = getattr(self.arguments, argument_name)
                 if value is None:
                     return None
-                return getter(self)
+
+                if has_one_argument(getter):
+                    return getter(self)
+                if has_two_argument(getter):
+                    return getter(self, value)
+                raise ValueError(
+                    "The parameters of the argument getter must be less "
+                    "than 2."
+                )
 
             wrapper = const_wrapper
             __kwds["required"] = False
@@ -320,9 +400,8 @@ class _GenerateArgumentGetter:
         elif origin_type == list:
             if len(type_args) > 1:
                 raise TypeError(
-                    "You should set the return type of argument "
-                    "function to list that contains only one "
-                    "type."
+                    "You should set the return type of argument function to "
+                    "list that contains only one type."
                 )
             __kwds["nargs"] = __kwds.get("nargs", "*")
             argument_type = type_args[0]
@@ -341,9 +420,14 @@ class _GenerateArgumentGetter:
 
         if wrapper is None:
 
-            def _wrapper(self: ArgumentParser):
+            def _wrapper(self):
                 value = getattr(self.arguments, argument_name)
-                return getter(self, value)
+                if has_two_argument(getter):
+                    return getter(self, value)
+                raise ValueError(
+                    "The number of the parameters of the argument getter "
+                    "must be 2 if the argument is not const."
+                )
 
             wrapper = _wrapper
 
@@ -362,7 +446,7 @@ class _GenerateArgumentGetter:
         return wrapper
 
 
-__generate_argument_getter = _GenerateArgumentGetter()
+_generate_argument_getter = _GenerateArgumentGetter()
 
 
 @overload
@@ -375,12 +459,12 @@ def argument(
 ) -> Callable[
     [
         Union[
-            Callable[[Any, P], R],
-            Callable[[Any, Optional[P]], R],
-            Callable[[Any, List[P]], R],
+            Callable[[T_co, P], R],
+            Callable[[T_co, Optional[P]], R],
+            Callable[[T_co, List[P]], R],
         ]
     ],
-    Callable[[Any], R],
+    Callable[[T_co], R],
 ]:
     ...
 
@@ -392,7 +476,7 @@ def argument(
     metavar: Optional[str] = None,
     choices: Optional[Iterable[P]] = None,
     const: Literal[True] = True,
-) -> Callable[[Callable[[Any], R]], Callable[[Any], Optional[R]]]:
+) -> Callable[[Callable[[T_co], R]], Callable[[T_co], Optional[R]]]:
     ...
 
 
@@ -404,31 +488,19 @@ def argument(
     choices: Optional[Iterable[P]] = None,
     const: Literal[False] = False,
     nargs: Optional[Union[int, Literal["*"], Literal["+"]]] = "*",
-) -> Callable[[Callable[[Any, List[P]], R]], Callable[[Any], R]]:
+) -> Callable[[Callable[[T_co, List[P]], R]], Callable[[T_co], R]]:
     ...
 
 
 @overload
 def argument(
     getter: Union[
-        Callable[[Any, P], R],
-        Callable[[Any, Optional[P]], R],
-        Callable[[Any, List[P]], R],
+        Callable[[T_co, P], R],
+        Callable[[T_co, Optional[P]], R],
+        Callable[[T_co, List[P]], R],
     ],
     /,
-) -> Callable[[Any], R]:
-    ...
-
-
-@overload
-def argument(
-    getter: Union[
-        Callable[[Any, P], None],
-        Callable[[Any, Optional[P]], None],
-        Callable[[Any, List[P]], None],
-    ],
-    /,
-) -> Callable[[Any], P]:
+) -> Callable[[T_co], R]:
     ...
 
 
@@ -437,12 +509,9 @@ def argument(
         Union[
             str,
             Union[
-                Callable[[Any, P], R],
-                Callable[[Any, Optional[P]], R],
-                Callable[[Any, List[P]], R],
-                Callable[[Any, P], None],
-                Callable[[Any, Optional[P]], None],
-                Callable[[Any, List[P]], None],
+                Callable[[T_co, P], R],
+                Callable[[T_co, Optional[P]], R],
+                Callable[[T_co, List[P]], R],
             ],
         ]
     ] = None,
@@ -452,12 +521,12 @@ def argument(
     const: bool = False,
     nargs: Optional[Union[int, Literal["*"], Literal["+"]]] = None,
 ) -> Union[
-    Callable[[Any], P],
-    Callable[[Any], R],
-    Callable[[Callable[[Any], R]], Callable[[Any], Optional[R]]],
-    Callable[[Callable[[Any, P], R]], Callable[[Any], R]],
-    Callable[[Callable[[Any, Optional[P]], R]], Callable[[Any], R]],
-    Callable[[Callable[[Any, List[P]], R]], Callable[[Any], R]],
+    Callable[[T_co], R],
+    Callable[[T_co], Optional[R]],
+    Callable[[Callable[[T_co], R]], Callable[[T_co], Optional[R]]],
+    Callable[[Callable[[T_co, P], R]], Callable[[T_co], R]],
+    Callable[[Callable[[T_co, Optional[P]], R]], Callable[[T_co], R]],
+    Callable[[Callable[[T_co, List[P]], R]], Callable[[T_co], R]],
 ]:
     """The decorator for an argument.
 
@@ -500,7 +569,7 @@ def argument(
     """
     # @overload: If name is getter function
     if name is not None and not isinstance(name, str):
-        return __generate_argument_getter(name)
+        return _generate_argument_getter(name)
 
     args: List[str] = []
     kwds: Dict[str, Any] = {}
@@ -527,6 +596,14 @@ def argument(
     if metavar is not None:
         kwds["metavar"] = metavar
 
-    return lambda getter: __generate_argument_getter(
-        getter, name=name, *args, **kwds
-    )
+    def wrapper(
+        getter: Union[
+            Callable[[T_co], R],
+            Callable[[T_co, P], R],
+            Callable[[T_co, Optional[P]], R],
+            Callable[[T_co, List[P]], R],
+        ]
+    ):
+        return _generate_argument_getter(getter, name=name, *args, **kwds)
+
+    return wrapper

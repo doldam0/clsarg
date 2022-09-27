@@ -1,25 +1,28 @@
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
-    -   id: end-of-file-fixer
-    -   id: check-merge-conflict
--   repo: https://github.com/psf/black
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+  - repo: https://github.com/psf/black
     rev: 22.6.0
     hooks:
-    -   id: black
+      - id: black
         language_version: python3.8
--   repo: local
+  - repo: local
     hooks:
-    -   id: pylint
+      - id: pylint
         name: pylint
         entry: pylint
         language: system
         types: [python]
-        args:
-            [
-                "-rn", # Only display messages
-                "-sn", # Don't display the score
-                "--rcfile=.pylintrc", # Link to your config file
-                "--load-plugins=pylint.extensions.docparams", # Load an extension
-            ]
+        args: [
+            "-rn", # Only display messages
+            "-sn", # Don't display the score
+            "--rcfile=.pylintrc", # Link to your config file
+            "--load-plugins=pylint.extensions.docparams", # Load an extension
+          ]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.271
+    hooks:
+      - id: pyright

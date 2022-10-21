@@ -13,7 +13,6 @@ from typing import (
     Literal,
     Optional,
     Tuple,
-    Type,
     TypeVar,
     Union,
     get_args,
@@ -21,6 +20,7 @@ from typing import (
     get_type_hints,
     overload,
 )
+
 from typing_extensions import TypeGuard
 
 
@@ -107,111 +107,15 @@ class ArgumentParser:
             args = MainArgument()
             do_something(args.num_class)
     """
-    __object__ = None
+    parser: argparse.ArgumentParser
 
-    def __new__(cls: Type[ArgumentParser], *args, **kwds):
-        """Overrided function.
-
-        Args:
-            cls (Type[ArgumentParser]): Class object type of `ArgumentParser`
-                to initialize.
-
-        Returns:
-            ArgumentParser: New initialized object.
-        """
-        if cls.__object__ is None:
-            cls.__object__ = object.__new__(cls)
-        return cls.__object__
-
-    def __init__(
-        self,
+    def __init_subclass__(
+        cls,
         prog: Optional[str] = None,
         usage: Optional[str] = None,
         description: Optional[str] = None,
         epilog: Optional[str] = None,
-        lazy_parsing: bool = False,
     ):
-        r"""Initializer of `ArgumentParser`.
-
-        Usage:
-            You can easily parse arguments by making a class inheriting::
-
-                class MainArgument(ArgumentParser):
-                    ...
-
-            Each arguments can be defined with a `@argument`. For example, if
-            you define the property whose name is `num_class`, like below::
-
-                class MainArgument(ArgumentParser):
-                    @argument
-                    def num_class(self, value: int) -> int:
-                        return value
-
-            then the argument `num_class` will be defined. That’s it!
-
-            You can add some options such as alias, default value, required
-            option, etc.::
-
-                class MainArgument(ArgumentParser):
-                    @argument(
-                        aliases='n',
-                        required=True
-                    )
-                    def num_class(self, value: int = 1) -> int:
-                        return value
-
-            You can check all options at the description of `@argument`
-            decorator.
-
-            A docstring is same with description(help) of argument::
-
-                class MainArgument(ArgumentParser):
-                    @argument(
-                        aliases='n',
-                        required=True
-                    )
-                    def num_class(self, value: int = 1) -> int:
-                        '''The number of the classes.'''
-                        return value
-
-            And if you want to set this argument as read-only, just add
-            `@property` decorator::
-
-                class MainArgument(ArgumentParser):
-                    @property
-                    @argument(
-                        aliases='n',
-                        required=True
-                    )
-                    def num_class(self, value: int = 1) -> int:
-                        '''The number of the classes.'''
-                        return value
-
-            **NOTE**: You should assign `property` before `argument`.
-
-            If you handle the argument `value`, just modify the function body
-            and return the handled value::
-
-                class MainArgument(ArgumentParser):
-                    @property
-                    @argument(
-                        aliases='n',
-                        default=1,
-                        required=True
-                    )
-                    def num_class(self, value: int) -> list[int]:
-                        '''The number of the classes.'''
-                        if value <= 0:
-                            raise ValueError("The value must be positive "
-                                             "integer")
-                        return value + 1
-
-            If you done writing down the argument class, just make an object of
-            parser. Then parsing will be done::
-
-            >>> args = MainArgument()
-            >>> do_something(args.num_class)
-        """
         kwds: Dict[str, str] = {}
         if prog is not None:
             kwds["prog"] = prog
@@ -222,10 +126,10 @@ class ArgumentParser:
         if epilog is not None:
             kwds["epilog"] = epilog
 
-        parser = argparse.ArgumentParser(**kwds)
+        cls.parser = argparse.ArgumentParser(**kwds)
         arguments: List[Tuple[int, Tuple[str, List[Any], Dict[str, Any]]]] = []
-        for name in dir(self.__class__):
-            item = getattr(self.__class__, name)
+        for name in dir(cls):
+            item = getattr(cls, name)
             if isinstance(item, property) and hasattr(
                 item.fget, "__argument_info"
             ):
@@ -246,25 +150,34 @@ class ArgumentParser:
 
         arguments = sorted(arguments, key=lambda x: x[0])
         for argument_name, args, kwds in [elem[1] for elem in arguments]:
-            parser.add_argument(f"--{argument_name}", *args, **kwds)
+            cls.parser.add_argument(f"--{argument_name}", *args, **kwds)
 
-        if not lazy_parsing:
-            self.__arguments = parser.parse_args()
+    def __init__(self, **kwds: Any):
+        """Initialize `ArgumentParser`.
 
-        self.__parser = parser
+        You can also give initial values by passing into `kwds`, but there is
+        not argument checker checking the arguments and `kwds` are matching. So
+        be careful to use.
+        """
+        self.__arguments = argparse.Namespace(**kwds)
 
     @property
     def arguments(self):
         """The object contains all arguments whose type is `Namespace`."""
         return self.__arguments
 
-    def parse_args(self, parameter: str):
+    def parse_args(self, parameter: Optional[str] = None):
         """Parse arguments from `parameter` directly.
 
         Args:
             parameter (str): A parameter to parse.
         """
-        self.__arguments = self.__parser.parse_args(parameter.split())
+        if parameter is not None:
+            self.__arguments = self.__class__.parser.parse_args(
+                parameter.split()
+            )
+        else:
+            self.__arguments = self.__class__.parser.parse_args()
 
 
 P = TypeVar("P", int, float, str, bool)

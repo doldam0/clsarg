@@ -1,7 +1,6 @@
 """Copyright 2022 by @doldam0. All rights reserved."""
 
 import unittest
-
 from typing import List, Optional
 
 from clsarg import ArgumentParser, argument

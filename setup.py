@@ -2,7 +2,6 @@
 
 import setuptools
 
-
 if __name__ == "__main__":
     with open("README.md", "r", encoding="utf-8") as f:
         long_description = f.read()
@@ -10,7 +9,7 @@ if __name__ == "__main__":
     with open("requirements.txt", "r") as f:
         setuptools.setup(
             name="clsarg",
-            version="0.0.3",
+            version="0.0.4",
             author="doldam0",
             author_email="jinustar@g.skku.edu",
             description="The class-based argument parser",

@@ -9,7 +9,7 @@ if __name__ == "__main__":
     with open("requirements.txt", "r") as f:
         setuptools.setup(
             name="clsarg",
-            version="0.0.4",
+            version="0.0.5",
             author="doldam0",
             author_email="jinustar@g.skku.edu",
             description="The class-based argument parser",

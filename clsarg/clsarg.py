@@ -107,7 +107,9 @@ class ArgumentParser:
             args = MainArgument()
             do_something(args.num_class)
     """
-    parser: argparse.ArgumentParser
+    _parser: argparse.ArgumentParser
+    _lazy_parsing: bool = False
+    _argument_added: bool = False
 
     def __init_subclass__(
         cls,
@@ -115,6 +117,7 @@ class ArgumentParser:
         usage: Optional[str] = None,
         description: Optional[str] = None,
         epilog: Optional[str] = None,
+        lazy_parsing: bool = False,
     ):
         kwds: Dict[str, str] = {}
         if prog is not None:
@@ -126,7 +129,16 @@ class ArgumentParser:
         if epilog is not None:
             kwds["epilog"] = epilog
 
-        cls.parser = argparse.ArgumentParser(**kwds)
+        cls._parser = argparse.ArgumentParser(**kwds)
+        cls._lazy_parsing = lazy_parsing
+
+        if not cls._lazy_parsing:
+            cls.__add_arguments()
+            cls._argument_added = True
+
+    @classmethod
+    def __add_arguments(cls):
+        """Add arguments."""
         arguments: List[Tuple[int, Tuple[str, List[Any], Dict[str, Any]]]] = []
         for name in dir(cls):
             item = getattr(cls, name)
@@ -150,7 +162,7 @@ class ArgumentParser:
 
         arguments = sorted(arguments, key=lambda x: x[0])
         for argument_name, args, kwds in [elem[1] for elem in arguments]:
-            cls.parser.add_argument(f"--{argument_name}", *args, **kwds)
+            cls._parser.add_argument(f"--{argument_name}", *args, **kwds)
 
     def __init__(self, **kwds: Any):
         """Initialize `ArgumentParser`.
@@ -166,18 +178,16 @@ class ArgumentParser:
         """The object contains all arguments whose type is `Namespace`."""
         return self.__arguments
 
-    def parse_args(self, parameter: Optional[str] = None):
+    def parse_args(self, parameter: str):
         """Parse arguments from `parameter` directly.
 
         Args:
             parameter (str): A parameter to parse.
         """
-        if parameter is not None:
-            self.__arguments = self.__class__.parser.parse_args(
-                parameter.split()
-            )
-        else:
-            self.__arguments = self.__class__.parser.parse_args()
+        if self._lazy_parsing and not self._argument_added:
+            self.__add_arguments()
+            self._argument_added = True
+        self.__arguments = self._parser.parse_args(parameter.split())
 
 
 P = TypeVar("P", int, float, str, bool)

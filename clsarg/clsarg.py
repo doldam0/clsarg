@@ -4,22 +4,9 @@ from __future__ import annotations
 
 import argparse
 from inspect import Parameter, signature
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-    get_type_hints,
-    overload,
-)
+from typing import (Any, Callable, Dict, Iterable, List, Literal, Optional,
+                    Tuple, TypeVar, Union, get_args, get_origin,
+                    get_type_hints, overload)
 
 from typing_extensions import TypeGuard
 
@@ -108,8 +95,6 @@ class ArgumentParser:
             do_something(args.num_class)
     """
     _parser: argparse.ArgumentParser
-    _lazy_parsing: bool = False
-    _argument_added: bool = False
 
     def __init_subclass__(
         cls,
@@ -117,7 +102,6 @@ class ArgumentParser:
         usage: Optional[str] = None,
         description: Optional[str] = None,
         epilog: Optional[str] = None,
-        lazy_parsing: bool = False,
     ):
         kwds: Dict[str, str] = {}
         if prog is not None:
@@ -130,11 +114,7 @@ class ArgumentParser:
             kwds["epilog"] = epilog
 
         cls._parser = argparse.ArgumentParser(**kwds)
-        cls._lazy_parsing = lazy_parsing
-
-        if not cls._lazy_parsing:
-            cls.__add_arguments()
-            cls._argument_added = True
+        cls.__add_arguments()
 
     @classmethod
     def __add_arguments(cls):
@@ -164,14 +144,17 @@ class ArgumentParser:
         for argument_name, args, kwds in [elem[1] for elem in arguments]:
             cls._parser.add_argument(f"--{argument_name}", *args, **kwds)
 
-    def __init__(self, **kwds: Any):
+    def __init__(self, lazy_parsing: bool = False):
         """Initialize `ArgumentParser`.
 
         You can also give initial values by passing into `kwds`, but there is
         not argument checker checking the arguments and `kwds` are matching. So
         be careful to use.
         """
-        self.__arguments = argparse.Namespace(**kwds)
+        if not lazy_parsing:
+            self.__arguments = self._parser.parse_args()
+        else:
+            self.__arguments = argparse.Namespace()
 
     @property
     def arguments(self):
@@ -184,9 +167,6 @@ class ArgumentParser:
         Args:
             parameter (str): A parameter to parse.
         """
-        if self._lazy_parsing and not self._argument_added:
-            self.__add_arguments()
-            self._argument_added = True
         self.__arguments = self._parser.parse_args(parameter.split())
 
 
